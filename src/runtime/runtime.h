@@ -1,9 +1,16 @@
 #pragma once
 
+#include <cstddef>
+#include <cstdint>
+#include <map>
+#include <set>
+#include <span>
+#include <string>
+#include <vector>
+
+#include "elements/atom.hpp"
 #include "il/il.hpp"
 #include "storage/string_storage.hpp"
-#include <span>
-#include <vector>
 
 namespace elemental::runtime {
 class Runtime final {
@@ -12,15 +19,22 @@ public:
   ~Runtime() = default;
 
   auto Load(std::string const &path) -> bool;
-  auto Run() -> bool;
+  void Run();
 
-  void InsertString(std::string const &string) { string_storage_.Insert(string); }
+private:
+  template <typename T> using NameMap     = std::multimap<std::string, T>;
+  template <typename T> using RegisterMap = std::map<std::uint32_t, T>;
 
   auto TryLoad(std::span<std::byte> bytes) -> bool;
 
-private:
   storage::StringStorage string_storage_;
-  std::vector<il::IL>    code_;
+  std::vector<std::byte> code_;
+
+  NameMap<elements::Atom *>     atomsByName_;
+  NameMap<elements::Membrane *> membranesByName_;
+
+  RegisterMap<elements::Atom *>     atomsByRegister_;
+  RegisterMap<elements::Membrane *> membranesByRegister_;
 };
 
 } // namespace elemental::runtime

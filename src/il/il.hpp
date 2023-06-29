@@ -1,13 +1,20 @@
 #pragma once
 
+#include <array>
+#include <concepts>
+#include <cstddef>
 #include <cstdint>
+#include <span>
 
 namespace elemental::il {
+
+constexpr std::size_t IlSize = 16;
 
 enum class Op : uint8_t {
   // Atom operations
   AddAtom,
   RemoveAtom,
+  MoveAtom,
 
   // Link operations
   Link,
@@ -19,7 +26,7 @@ enum class Op : uint8_t {
 
   // Rule operations
   FindAtom,
-  AnyMembrane,
+  FindMembrane,
 
   // Type operations
   IsSame,
@@ -33,18 +40,5 @@ enum class Op : uint8_t {
 
   /// Indicates that the instruction is continued in the next instruction.
   Expanded,
-};
-
-constexpr uint64_t OpMask = 0xFF;
-
-struct IL final {
-public:
-  constexpr IL(uint64_t data) noexcept : data_{data} {}
-
-  [[nodiscard]] constexpr auto GetOp() const noexcept -> Op { return static_cast<Op>(data_ & OpMask); }
-  [[nodiscard]] constexpr auto GetRawData() const noexcept -> uint64_t { return data_; }
-
-private:
-  uint64_t data_;
 };
 } // namespace elemental::il

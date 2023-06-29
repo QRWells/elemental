@@ -13,9 +13,9 @@ enum class Version : uint8_t {
   Lmntal10 = 0x00,
 };
 
-struct Flags {
-  bool    endianess : 1;
-  int16_t reserved : 15;
+enum FlagMask : uint8_t {
+  HyperLinkMask = 0b10000000,
+  ReservedMask  = 0b01111111,
 };
 
 struct Header {
@@ -24,7 +24,9 @@ struct Header {
   /// Version of the file.
   Version version;
   /// Flags for the file.
-  Flags flags;
+  uint8_t flags;
+
+  uint16_t reserved;
 
   /// The offset from the start of the file to the start of the string table.
   int32_t string_table_offset;
