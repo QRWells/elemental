@@ -2,13 +2,24 @@
 
 #include <concepts>
 #include <cstddef>
+#include <cstdint>
 #include <fstream>
 #include <span>
 #include <vector>
 
 #include "elements/atom.hpp"
 #include "elements/membrane.hpp"
+#include "elements/rule.hpp"
 #include "il/format.hpp"
+
+namespace {
+template <std::unsigned_integral T> constexpr inline auto Fetch(std::span<std::byte>::iterator &pc) -> T {
+  auto value = *reinterpret_cast<T *>(&*pc);
+  pc += sizeof(T);
+  return value;
+}
+
+} // namespace
 
 namespace elemental::runtime {
 
@@ -27,6 +38,14 @@ auto Runtime::Load(std::string const &path) -> bool {
   return TryLoad(bytes);
 }
 
+void Runtime::Run() {
+  auto *root = new elements::Membrane{"root"};
+  this->membranesByRegister_.emplace(0, root);
+
+  Execute(this->code_); // initialize environment
+  // TODO: Try to find applicable rules. (Atom-based way)
+}
+
 auto Runtime::TryLoad(std::span<std::byte> bytes) -> bool {
   using namespace ::elemental::il;
   auto header = Header::Parse(bytes);
@@ -39,35 +58,53 @@ auto Runtime::TryLoad(std::span<std::byte> bytes) -> bool {
     return false;
   }
 
-  auto string_table = bytes.subspan(header.string_table_length, header.string_table_length);
-  auto code         = bytes.subspan(header.code_offset, header.code_length);
+  auto string_table = bytes.subspan(header.string_table_offset, header.string_table_length);
+  auto code         = bytes.subspan(header.predef_offset, header.predef_length);
+  auto rule         = bytes.subspan(header.rule_offset, header.rule_length);
 
   // TODO: Parse the string table and code sections.
 
-  while (!string_table.empty()) {
-    auto length = *reinterpret_cast<uint8_t *>(string_table.data());
-    auto string = std::string{reinterpret_cast<char *>(string_table.data() + 1), length};
-    string_storage_.Insert(string);
+  return TryLoadStringTable(string_table) && TryLoadCode(code) && TryLoadRule(rule);
+}
 
-    string_table = string_table.subspan(length + 1);
+auto Runtime::TryLoadStringTable(std::span<std::byte> bytes) -> bool {
+  auto pc = bytes.begin();
+  while (pc != bytes.end()) {
+    auto length = Fetch<std::uint8_t>(pc);
+    auto str    = std::string{reinterpret_cast<char *>(&*pc), length};
+    pc += length;
+    this->string_storage_.Insert(str);
   }
-
-  code_.resize(code.size());
-  std::memcpy(code_.data(), code.data(), code.size());
-
   return true;
 }
 
-template <std::unsigned_integral T> constexpr auto Fetch(std::vector<std::byte>::iterator &pc) -> T {
-  auto value = *reinterpret_cast<T *>(&*pc);
-  pc += sizeof(T);
-  return value;
+auto Runtime::TryLoadCode(std::span<std::byte> bytes) -> bool {
+  this->code_ = std::vector<std::byte>(bytes.begin(), bytes.end());
+  return true;
 }
 
-void Runtime::Run() {
-  auto pc = this->code_.begin();
-  while (pc != this->code_.end()) {
+auto Runtime::TryLoadRule(std::span<std::byte> bytes) -> bool {
+  auto base            = bytes.begin();
+  auto header          = bytes.begin();
+  auto number_of_rules = Fetch<std::uint32_t>(header);
+  for (auto i = 0; i < number_of_rules; ++i) {
+    auto rule_base   = base + Fetch<std::uint32_t>(header);
+    auto rule_header = il::RuleHeader::Parse({rule_base, bytes.end()});
+
+    auto *mem = membranesByRegister_.at(rule_header.mem_id);
+    // TODO: Parse the rule.
+    auto rb   = elements::RuleBuilder{mem};
+    auto rule = rb.Build();
+    mem->AddRule(&rule);
+  }
+  return true;
+}
+
+void Runtime::Execute(std::span<std::byte> code) {
+  auto pc = code.begin();
+  while (pc != code.end()) {
     auto op = static_cast<il::Op>(*pc);
+
     switch (op) {
     case il::Op::AddAtom: {
       auto reg_id  = Fetch<std::uint32_t>(pc);

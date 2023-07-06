@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <cstdint>
 #include <cstring>
 #include <span>
@@ -33,10 +34,15 @@ struct Header {
   /// The length of the string table in bytes.
   int32_t string_table_length;
 
-  /// The offset from the start of the file to the start of the code section.
-  int32_t code_offset;
-  /// The length of the code section in bytes.
-  int32_t code_length;
+  /// The offset from the start of the file to the start of the predefinition section.
+  int32_t predef_offset;
+  /// The length of the predefinition section in bytes.
+  int32_t predef_length;
+
+  /// The offset from the start of the file to the start of the rule section.
+  int32_t rule_offset;
+  /// The length of the rule section in bytes.
+  int32_t rule_length;
 
   static inline constexpr auto Parse(std::span<std::byte> bytes) noexcept {
     if (bytes.size() < sizeof(Header)) {
@@ -45,6 +51,24 @@ struct Header {
 
     Header header;
     std::memcpy(&header, bytes.data(), sizeof(Header));
+    return header;
+  }
+};
+
+struct RuleHeader {
+  std::uint32_t guard_offset;
+  std::uint32_t body_offset;
+  std::uint32_t mem_id;
+  std::int32_t  priority;
+  std::uint32_t name_id;
+
+  static inline constexpr auto Parse(std::span<std::byte> bytes) noexcept {
+    if (bytes.size() < sizeof(RuleHeader)) {
+      return RuleHeader{.guard_offset = 0}; // return invalid header
+    }
+
+    RuleHeader header;
+    std::memcpy(&header, bytes.data(), sizeof(RuleHeader));
     return header;
   }
 };

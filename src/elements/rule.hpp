@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <optional>
 #include <string>
 #include <vector>
@@ -50,8 +51,9 @@ private:
 
   Rule(Membrane *mem) : membrane_{mem} {}
 
-  Membrane             *membrane_;
-  std::vector<RuleItem> items_{};
+  Membrane              *membrane_;
+  std::vector<std::byte> code_{};
+  std::vector<RuleItem>  items_{};
 };
 
 inline auto FindAtom() -> RuleItem { return RuleItem{ElementType::Atom}; }

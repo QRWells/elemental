@@ -5,6 +5,7 @@
 #include "elements/rule.hpp"
 #include <cstddef>
 #include <optional>
+#include <ranges>
 #include <string>
 #include <unordered_set>
 
@@ -20,6 +21,14 @@ public:
   [[nodiscard]] auto AtomCount() const -> std::size_t { return atoms_.size(); }
   [[nodiscard]] auto MembraneCount() const -> std::size_t { return membranes_.size(); }
 
+  auto FindAtom(std::string_view name, Membrane *parent, std::size_t arity) const -> std::optional<Atom *> {
+    for (auto *atom : atoms_) {
+      if (atom->GetName() == name && atom->GetMembrane() == parent && atom->GetArity() == arity) {
+        return atom;
+      }
+    }
+    return std::nullopt;
+  }
   auto AddAtom(Atom *element) -> void { atoms_.emplace(element); }
   auto RemoveAtom(Atom *element) -> void { atoms_.erase(element); }
 

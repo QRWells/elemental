@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <map>
+#include <random>
 #include <set>
 #include <span>
 #include <string>
@@ -26,6 +27,11 @@ private:
   template <typename T> using RegisterMap = std::map<std::uint32_t, T>;
 
   auto TryLoad(std::span<std::byte> bytes) -> bool;
+  auto TryLoadStringTable(std::span<std::byte> bytes) -> bool;
+  auto TryLoadCode(std::span<std::byte> bytes) -> bool;
+  auto TryLoadRule(std::span<std::byte> bytes) -> bool;
+
+  void Execute(std::span<std::byte> code);
 
   storage::StringStorage string_storage_;
   std::vector<std::byte> code_;
@@ -35,6 +41,8 @@ private:
 
   RegisterMap<elements::Atom *>     atomsByRegister_;
   RegisterMap<elements::Membrane *> membranesByRegister_;
+
+  std::mt19937_64 random_{std::random_device{}()};
 };
 
 } // namespace elemental::runtime
